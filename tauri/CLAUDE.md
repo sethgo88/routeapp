@@ -75,8 +75,35 @@ VITE_SUPABASE_ANON_KEY=...
 ## Setup Prerequisites
 See `docs/setup-android.md` (Android Studio, SDK) and `docs/framework-notes/tauri.md` (Rust targets, NDK, env vars).
 
+## Documentation Maintenance
+
+| Change | Update |
+|---|---|
+| New Tauri plugin or capability | `docs/framework-notes/tauri.md` + `src-tauri/tauri.conf.json` capabilities |
+| MapLibre GL JS pattern discovered | `docs/framework-notes/tauri.md` |
+| DB schema change (SQLite migration) | `docs/architecture.md` + add migration in `src/lib/db.ts` |
+| GPX import/export change | `docs/api-contract.md` |
+| Sync or auth flow change | `docs/architecture.md` |
+| CSP change | `src-tauri/tauri.conf.json` + `docs/framework-notes/tauri.md` |
+| Gotcha or build issue found | `docs/framework-notes/tauri.md` (Gotchas section) |
+
+## Testing
+
+Mirrors betaapp exactly — see `betaapp/tauri/betaapp/docs/testing.md` for the full
+`DbAdapter` injection pattern.
+
+```bash
+pnpm test          # run tests
+pnpm test:coverage # with coverage
+```
+
+- Vitest + better-sqlite3 for service-layer SQL tests (no Tauri runtime needed).
+- `DbAdapter` interface in `src/lib/db.ts` makes services injectable.
+- `setDb(adapter)` in `beforeEach` injects an in-memory SQLite adapter.
+
 ## Docs
 - `docs/framework-notes/tauri.md` — Tauri Android setup, plugins, known issues
 - `/c/web/docs/tauri.md` — General Tauri 2 guide
 - `docs/architecture.md` — shared domain model
 - `docs/api-contract.md` — Valhalla API, GPX format, Supabase schema
+- `docs/testing.md` — cross-framework testing philosophy

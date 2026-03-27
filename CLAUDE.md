@@ -45,74 +45,31 @@ ElevationPoint
   elevationM:  float
 ```
 
-## SQLite Schema
+## Domain Rules
 
-```sql
-CREATE TABLE routes (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  remote_id   TEXT,
-  name        TEXT    NOT NULL,
-  color       TEXT    NOT NULL DEFAULT '#3b82f6',
-  waypoints   TEXT    NOT NULL,  -- JSON
-  geometry    TEXT    NOT NULL,  -- GeoJSON
-  stats       TEXT,              -- JSON or NULL
-  created_at  TEXT    NOT NULL,
-  updated_at  TEXT    NOT NULL,
-  deleted_at  TEXT               -- soft delete
-);
+Short constraint docs live in `.claude/rules/` — Claude Code loads these automatically
+for matching file paths. Read them before touching the relevant code:
 
-CREATE TABLE settings (
-  key         TEXT PRIMARY KEY,
-  value       TEXT NOT NULL,
-  updated_at  TEXT NOT NULL
-);
-```
+| Rule file | Governs |
+|---|---|
+| `.claude/rules/map.md` | MapLibre: tile URL, long-press, polyline layer, marker visuals |
+| `.claude/rules/routing.md` | Valhalla: polyline6 precision, debounce, snap modes |
+| `.claude/rules/gpx.md` | GPX 1.1 format, import/export constraints |
+| `.claude/rules/sync.md` | Local-first SQLite-first, upsert, soft deletes |
 
-Always filter `WHERE deleted_at IS NULL` on every read. `updated_at` is set by the application on every write (no DB trigger available in SQLite across frameworks).
+## Documentation Maintenance
 
-## Stadia / Valhalla API
+Update the relevant doc before closing any task:
 
-Base URL: `https://valhalla1.openstreetmap.de` (public) or Stadia endpoint with key.
-
-**Route endpoint:** `POST /route/v1?api_key=KEY`
-```json
-{
-  "locations": [{"lon": 0, "lat": 0, "type": "break"}],
-  "costing": "pedestrian",
-  "costing_options": {
-    "pedestrian": { "use_trails": 1.0, "walking_speed": 5.1 }
-  },
-  "directions_type": "none"
-}
-```
-Response: `trip.legs[].shape` (polyline6-encoded), `trip.summary.length` (km).
-
-**CRITICAL:** Valhalla encodes at precision 1e6 (polyline6), NOT 1e5 (standard Google polyline). Every implementation must use the correct precision when decoding.
-
-**Elevation endpoint:** `POST /elevation/v1?api_key=KEY`
-```json
-{ "shape": [{"lon": 0, "lat": 0}], "range": true }
-```
-Response: `range_height` — array of `[distanceMetres, elevationMetres]` pairs.
-Normalise distance to km: `distanceKm = distanceMetres / 1000`.
-
-**Snap to trails:** `use_trails: 1.0` = snap; `use_trails: 0.5` = no snap (per-segment in advanced mode).
-
-## Feature Checklist (implement in order)
-
-1. [ ] Map view — MapLibre + Stadia raster tiles
-2. [ ] Long-press to drop waypoints (labeled A, B, C…)
-3. [ ] Valhalla routing between waypoints (debounced on change)
-4. [ ] Draggable waypoint markers
-5. [ ] Snap-to-trail toggle
-6. [ ] Elevation profile chart with tap-to-fly camera
-7. [ ] GPX import via file picker
-8. [ ] GPX export via system share sheet
-9. [ ] Route save/load (SQLite)
-10. [ ] Route list view
-11. [ ] Center map on GPS location
-12. [ ] Supabase auth
-13. [ ] Cloud sync push/pull
+| Change | Update |
+|---|---|
+| Feature added or changed | `docs/features.md` |
+| Schema change (SQLite or Supabase) | `docs/architecture.md` |
+| API shape change (Valhalla, GPX, Supabase) | `docs/api-contract.md` |
+| Framework evaluation note | `docs/evaluation.md` |
+| New library or tech choice | Per-framework `docs/framework-notes/<fw>.md` |
+| Android setup step | `docs/setup-android.md` |
+| Architecture or navigation change | `docs/architecture.md` |
 
 ## Evaluation Criteria
 
