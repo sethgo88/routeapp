@@ -5,14 +5,18 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../constants/map.dart';
+import '../../constants/map_layers.dart';
 import '../../models/saved_route.dart';
 import '../../services/db.dart' as db;
+import '../../state/settings_provider.dart';
 import '../gpx/gpx_exporter.dart';
 import '../routes/route_list_sheet.dart';
 import '../routes/route_detail_modal.dart';
 import '../routes/route_editor_screen.dart';
 import '../routes/route_list_modal.dart' show savedRoutesProvider;
+import '../settings/settings_screen.dart';
+import 'layer_popover.dart';
+import 'search_modal.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -26,6 +30,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _mapStyleLoaded = false;
   SavedRoute? _detailRoute;
   List<SavedRoute> _loadedRoutes = [];
+  bool _showLayerPopover = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize active layer from settings after first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final settings = await ref.read(settingsProvider.future);
+      if (mounted &&
+          ref.read(activeLayerProvider) == null) {
+        ref.read(activeLayerProvider.notifier).state = settings.defaultLayer;
+      }
+    });
+  }
 
   void _onMapCreated(MaplibreMapController controller) {
     _mapController = controller;
@@ -35,6 +53,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     setState(() => _mapStyleLoaded = true);
     _refreshRouteLayers();
   }
+
+  MapLayer get _activeLayer =>
+      ref.read(activeLayerProvider) ??
+      ref.read(settingsProvider).value?.defaultLayer ??
+      MapLayer.trail;
 
   Future<void> _refreshRouteLayers() async {
     final controller = _mapController;
@@ -82,6 +105,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final controller = _mapController;
     if (controller == null) return;
 
+    // Dismiss layer popover on map tap.
+    if (_showLayerPopover) {
+      setState(() => _showLayerPopover = false);
+      return;
+    }
+
     try {
       final features = await controller.queryRenderedFeatures(
         point,
@@ -101,7 +130,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     } catch (_) {}
 
-    // Dismiss detail modal on empty map tap
+    // Dismiss detail modal on empty map tap.
     if (_detailRoute != null && mounted) {
       setState(() => _detailRoute = null);
     }
@@ -151,7 +180,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _exportRoute(SavedRoute route) async {
-    // Load elevation data from the saved geometry if available
     final gpx = exportGpx(
       geometry: route.geometry,
       elevationData: const [],
@@ -165,14 +193,52 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  void _onLayerSelected(MapLayer layer) {
+    setState(() => _showLayerPopover = false);
+    ref.read(activeLayerProvider.notifier).state = layer;
+    ref.read(settingsProvider.notifier).setDefaultLayer(layer);
+    // Reload map style.
+    setState(() => _mapStyleLoaded = false);
+    _mapController?.setStyleString(layer.styleUrl);
+    // _onStyleLoaded will be called by the map and set _mapStyleLoaded = true.
+  }
+
+  void _openSearch() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: false,
+        pageBuilder: (context, _, __) => SearchModal(
+          onLocationSelected: (coord) {
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(coord, 14),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Listen to layer changes from settings screen or other surfaces.
+    ref.listen<MapLayer?>(activeLayerProvider, (prev, next) {
+      if (next != null && prev != next && _mapController != null) {
+        setState(() => _mapStyleLoaded = false);
+        _mapController!.setStyleString(next.styleUrl);
+      }
+    });
+
+    final activeLayer = ref.watch(activeLayerProvider) ??
+        ref.watch(settingsProvider).value?.defaultLayer ??
+        MapLayer.trail;
+
     return Scaffold(
       body: Stack(
         children: [
           // Full-screen map
           MaplibreMap(
-            styleString: mapStyleUrl,
+            styleString: activeLayer.styleUrl,
             initialCameraPosition: const CameraPosition(
               target: LatLng(37.7749, -122.4194),
               zoom: 12,
@@ -192,10 +258,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 padding: const EdgeInsets.all(8),
                 child: _MapIconButton(
                   icon: Icons.settings,
-                  onPressed: () {
-                    // TODO Phase 2: Settings screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Settings — coming soon')),
+                  onPressed: () async {
+                    await Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -214,12 +282,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   children: [
                     _MapIconButton(
                       icon: Icons.layers,
-                      onPressed: () {
-                        // TODO Phase 2: Map layer popover
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Map layers — coming soon')),
-                        );
-                      },
+                      highlighted: _showLayerPopover,
+                      onPressed: () => setState(
+                          () => _showLayerPopover = !_showLayerPopover),
                     ),
                     const SizedBox(height: 8),
                     _MapIconButton(
@@ -229,12 +294,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     const SizedBox(height: 8),
                     _MapIconButton(
                       icon: Icons.search,
-                      onPressed: () {
-                        // TODO Phase 2: Search modal
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Search — coming soon')),
-                        );
-                      },
+                      onPressed: _openSearch,
                     ),
                     const SizedBox(height: 8),
                     _MapIconButton(
@@ -247,6 +307,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ),
+
+          // Layer popover — tap-outside dismissal underlay
+          if (_showLayerPopover)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _showLayerPopover = false),
+                behavior: HitTestBehavior.translucent,
+                child: const SizedBox.expand(),
+              ),
+            ),
+
+          // Layer popover — positioned left of the layers button
+          if (_showLayerPopover)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  // right: button_width(42) + outer_padding(8) + gap(4) = 54
+                  padding: const EdgeInsets.only(top: 8, right: 54),
+                  child: LayerPopover(
+                    activeLayer: activeLayer,
+                    onLayerSelected: _onLayerSelected,
+                  ),
+                ),
+              ),
+            ),
 
           // Route List Sheet — always peeking at bottom
           RouteListSheet(
@@ -262,6 +348,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onClose: () => setState(() => _detailRoute = null),
               onEdit: () => _openEditorForRoute(_detailRoute!.id),
               onExport: () => _exportRoute(_detailRoute!),
+              imperial: ref.watch(settingsProvider).value?.isImperial ?? false,
             ),
         ],
       ),

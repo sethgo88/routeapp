@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../../models/saved_route.dart';
+import '../../state/settings_provider.dart';
+import '../../utils/format.dart';
 import '../gpx/gpx_parser.dart';
 import '../routes/route_list_modal.dart' show savedRoutesProvider;
 import '../routes/route_editor_screen.dart';
@@ -94,11 +96,17 @@ class RouteListSheet extends ConsumerWidget {
                         ),
                       );
                     }
+                    final settings =
+                        ref.watch(settingsProvider).value;
+                    final imperial = settings?.isImperial ?? false;
                     return ListView.builder(
                       controller: scrollController,
                       itemCount: routes.length,
-                      itemBuilder: (context, i) =>
-                          _RouteRow(route: routes[i], onTap: onRouteSelected),
+                      itemBuilder: (context, i) => _RouteRow(
+                        route: routes[i],
+                        onTap: onRouteSelected,
+                        imperial: imperial,
+                      ),
                     );
                   },
                 ),
@@ -157,17 +165,19 @@ class RouteListSheet extends ConsumerWidget {
 class _RouteRow extends StatelessWidget {
   final SavedRoute route;
   final void Function(int) onTap;
+  final bool imperial;
 
-  const _RouteRow({required this.route, required this.onTap});
+  const _RouteRow({
+    required this.route,
+    required this.onTap,
+    required this.imperial,
+  });
 
   String _formatStat() {
     if (route.stats == null) return '';
-    final d = route.stats!.distanceKm;
-    final dist = d >= 1
-        ? '${d.toStringAsFixed(2)} km'
-        : '${(d * 1000).toStringAsFixed(0)} m';
-    final gain = '↑ ${route.stats!.gainM.toStringAsFixed(0)} m';
-    final loss = '↓ ${route.stats!.lossM.toStringAsFixed(0)} m';
+    final dist = formatDistance(route.stats!.distanceKm, imperial: imperial);
+    final gain = '↑ ${formatElevation(route.stats!.gainM, imperial: imperial)}';
+    final loss = '↓ ${formatElevation(route.stats!.lossM, imperial: imperial)}';
     return '$dist · $gain · $loss';
   }
 

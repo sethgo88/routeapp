@@ -65,6 +65,28 @@ await controller.addLine(LineOptions(
 - Equivalent to Zustand: `ref.read(routeProvider.notifier).addWaypoint(...)`
 - Equivalent to TanStack Query: `ref.watch(routingQueryProvider)` with `AsyncValue`
 
+## Phase 2 Patterns
+
+**Map layer switching:**
+Call `controller.setStyleString(newUrl)` to switch layers. Custom images registered
+via `addImage()` are cleared on style change. Pass a versioned `key` to overlay
+widgets (`WaypointMarkersOverlay`, `RoutePolylineOverlay`) so they rebuild and
+re-register images after `onStyleLoadedCallback` fires.
+
+**Nominatim geocoding:**
+Use `https://nominatim.openstreetmap.org/search?format=json&q=...&addressdetails=1`.
+Must send a `User-Agent` header. Split `display_name` on `, ` for name vs location.
+
+**Supabase initialization:**
+Call `await Supabase.initialize(url, anonKey)` before `runApp()`. Guard with
+`if (url.isNotEmpty)` so the app works without Supabase creds during development.
+Auth stream: `Supabase.instance.client.auth.onAuthStateChange.map((e) => e.session?.user)`.
+
+**Settings provider async init:**
+`SettingsNotifier` is an `AsyncNotifier` that loads SQLite values in `build()`.
+Use `ref.watch(settingsProvider).value?.isImperial ?? false` in widgets to read
+the setting with a safe fallback while loading.
+
 ## Gotchas
 
 _Fill in as discovered during implementation._

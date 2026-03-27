@@ -34,8 +34,12 @@ Rate each criterion 1–5 after completing the full feature checklist:
 | SQLite save/load | ✓ | sqflite, soft deletes, color + stats stored |
 | Route list | ✓ | Always-peeking bottom sheet on home map |
 | GPS centering | ✓ | geolocator with permission request |
-| Supabase auth | — | Phase 2 |
-| Cloud sync | — | Phase 2 |
+| Map layer switcher | ✓ | Popover with 4 Stadia styles; active layer persisted to SQLite |
+| Search (geocoding) | ✓ | Nominatim-backed; fade-in modal; tap pans map |
+| Settings screen | ✓ | Units toggle (km/mi/m/ft), default layer dropdown, account section |
+| Supabase auth | ✓ | Email/password sign in, register, forgot password, sign out |
+| Cloud sync | ✓ | Push/pull on sign-in; unit_system synced to user_settings table |
+| Unit-aware display | ✓ | All distance/elevation displays respect metric/imperial toggle |
 
 ### DX Notes
 - Phase 1 implemented by Claude on first pass. Home map / editor split required a full UI redesign from the initial scaffold.
