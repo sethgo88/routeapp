@@ -10,6 +10,7 @@ import '../../models/saved_route.dart';
 import '../../services/db.dart' as db;
 import '../../state/settings_provider.dart';
 import '../gpx/gpx_exporter.dart';
+import '../offline/downloaded_regions_sheet.dart';
 import '../routes/route_list_sheet.dart';
 import '../routes/route_detail_modal.dart';
 import '../routes/route_editor_screen.dart';
@@ -31,6 +32,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   SavedRoute? _detailRoute;
   List<SavedRoute> _loadedRoutes = [];
   bool _showLayerPopover = false;
+  bool _showOfflineSheet = false;
 
   @override
   void initState() {
@@ -203,6 +205,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // _onStyleLoaded will be called by the map and set _mapStyleLoaded = true.
   }
 
+  Future<void> _openSettings() async {
+    final result = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    if (mounted && result == 'offline') {
+      setState(() => _showOfflineSheet = true);
+    }
+  }
+
+  Future<void> _openSettingsFromSheet() async {
+    setState(() => _showOfflineSheet = false);
+    await _openSettings();
+  }
+
   void _openSearch() {
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -258,14 +275,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 padding: const EdgeInsets.all(8),
                 child: _MapIconButton(
                   icon: Icons.settings,
-                  onPressed: () async {
-                    await Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
-                      ),
-                    );
-                  },
+                  onPressed: () => _openSettings(),
                 ),
               ),
             ),
@@ -349,6 +359,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onEdit: () => _openEditorForRoute(_detailRoute!.id),
               onExport: () => _exportRoute(_detailRoute!),
               imperial: ref.watch(settingsProvider).value?.isImperial ?? false,
+            ),
+
+          // Downloaded Regions Sheet — shown when navigating from Settings
+          if (_showOfflineSheet)
+            DownloadedRegionsSheet(
+              onBackToSettings: _openSettingsFromSheet,
+              onZoomToBounds: (bounds) {
+                setState(() => _showOfflineSheet = false);
+                _mapController?.animateCamera(
+                  CameraUpdate.newLatLngBounds(
+                    bounds,
+                    left: 40,
+                    top: 40,
+                    right: 40,
+                    bottom: 40,
+                  ),
+                );
+              },
             ),
         ],
       ),

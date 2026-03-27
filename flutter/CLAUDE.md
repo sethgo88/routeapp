@@ -10,7 +10,7 @@
 |---|---|---|
 | Phase 1 | ✅ Complete | Map, editor, waypoints, routing, elevation, GPX, SQLite |
 | Phase 2 | ✅ Complete | Layer switcher, search, settings, auth, cloud sync, unit display |
-| Phase 3 | 🔲 Pending | Offline map tile download (bbox selection, downloaded regions sheet) |
+| Phase 3 | ✅ Complete | Offline map tile download (bbox selection, downloaded regions sheet) |
 
 ### Phase 1 — Completed Features
 - Home map with all saved routes drawn simultaneously in their own colors
@@ -34,12 +34,11 @@
 - Cloud sync: push (upsert local → Supabase), pull (insert remote-only locally), unit_system sync
 - Unit-aware display everywhere: `formatDistance` / `formatElevation` from `lib/utils/format.dart`
 
-### Phase 3 — What Needs to Be Built
-See `docs/features.md` §9–10 for full spec. Key pieces:
-- **Downloaded Regions Sheet** — bottom sheet on home map listing saved offline regions
-- **Bbox Selection screen** — full-screen map with draggable corner rectangle, name input, download trigger
-- **MapLibre offline tile download** — `controller.addOfflineTiles(region)` or equivalent
-- **Delete region** — confirmation modal, remove from MapLibre offline store
+### Phase 3 — Completed Features
+- **Downloaded Regions Sheet** — `lib/features/offline/downloaded_regions_sheet.dart`; bottom sheet (peek / 40%) listing regions with View + Delete actions
+- **Bbox Selection screen** — `lib/features/offline/bbox_selection_screen.dart`; full-screen map, draggable corner dots (long-press to activate), real-time size estimate, name input, Save downloads via `downloadOfflineRegion()`
+- **MapLibre offline tile download** — top-level `downloadOfflineRegion(OfflineRegionDefinition, metadata, onEvent)` from `maplibre_gl`
+- **Delete region** — confirmation modal → `deleteOfflineRegion(id)`; `lib/models/offline_region.dart` wraps `OfflineRegion`
 
 ---
 
@@ -64,6 +63,7 @@ lib/
     route_stats.dart             # RouteStats: distanceKm, gainM, lossM
     saved_route.dart             # SavedRoute: id, remoteId, name, color, waypoints, geometry, stats,
                                  #   createdAt, updatedAt, deletedAt
+    offline_region.dart          # OfflineRegionInfo: wraps maplibre_gl OfflineRegion + name/size helpers
   services/
     db.dart                      # sqflite wrapper — listRoutes, listRoutesAll, getRoute,
                                  #   getRouteByRemoteId, saveRoute, updateRoute, deleteRoute,
@@ -98,8 +98,12 @@ lib/
       sign_in_sheet.dart         # Bottom sheet: sign-in / forgot-password / register modes
     settings/
       settings_screen.dart       # Full-screen: units toggle, layer dropdown, account section
+                                 #   "Downloaded Regions" tile pops with 'offline' result
     sync/
       sync_service.dart          # SyncService.sync() — push + pull + settings; syncService singleton
+    offline/
+      downloaded_regions_sheet.dart  # Bottom sheet (peek/40%): list regions, View, Delete
+      bbox_selection_screen.dart     # Full-screen bbox picker; draggable corners, download trigger
 ```
 
 ---
