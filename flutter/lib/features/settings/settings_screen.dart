@@ -94,16 +94,14 @@ class SettingsScreen extends ConsumerWidget {
                   : _SignedInTile(user: user),
             ),
 
-            // ── Downloaded Regions (Phase 3 placeholder) ──────────────
+            // ── Downloaded Regions ─────────────────────────────────────
             _SectionHeader('Offline Maps'),
             ListTile(
               title: const Text('Downloaded Regions'),
+              subtitle: const Text('Manage offline tile regions'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Offline maps — coming in Phase 3'),
-                ),
-              ),
+              // Pop with 'offline' so MapScreen knows to open the sheet.
+              onTap: () => Navigator.of(context).pop('offline'),
             ),
           ],
         ),

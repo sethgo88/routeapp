@@ -40,6 +40,8 @@ Rate each criterion 1–5 after completing the full feature checklist:
 | Supabase auth | ✓ | Email/password sign in, register, forgot password, sign out |
 | Cloud sync | ✓ | Push/pull on sign-in; unit_system synced to user_settings table |
 | Unit-aware display | ✓ | All distance/elevation displays respect metric/imperial toggle |
+| Offline tile download | ✓ | Bbox selection screen, draggable corners, size estimate, maplibre_gl offline API |
+| Downloaded regions sheet | ✓ | List, View (zoom to bounds), Delete with confirmation |
 
 ### DX Notes
 - Phase 1 implemented by Claude on first pass. Home map / editor split required a full UI redesign from the initial scaffold.
@@ -47,6 +49,9 @@ Rate each criterion 1–5 after completing the full feature checklist:
 - `DraggableScrollableSheet` with `snap: true` + `snapSizes` works cleanly for both the route list sheet and editor stats sheet.
 - `queryRenderedFeatures` on line layers enables route tap detection on home map.
 - Elevation tap-to-fly works because the elevation API returns one point per input coordinate (1:1 index mapping to route geometry).
+- Phase 3: `maplibre_gl` offline API (`downloadOfflineRegion`, `getListOfRegions`, `deleteOfflineRegion`) are top-level functions exported from the package. `OfflineRegionDefinition` takes `double` zoom levels. Size is estimated via tile-count formula (~15 KB/tile for vector tiles).
+- Bbox selection screen uses screen-space `Offset` coordinates for the rectangle; corners are converted to `LatLng` via `controller.toLatLng(Point<double>)` only on drag-end and on save.
+- `DraggableScrollableController` enables collapsing the regions sheet to peek when "View" is tapped.
 
 ### Build Notes
 _To be filled after first device test._
