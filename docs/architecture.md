@@ -122,6 +122,65 @@ CREATE TABLE user_settings (
 
 RLS: users can only read/write their own rows.
 
+## Authentication Flow
+
+Email/password auth via Supabase (`supabase_flutter`). Three modes in a single bottom sheet (`SignInSheet`):
+
+| Mode | Action |
+|---|---|
+| Sign in | `auth.signInWithPassword(email, password)` → pop with `true` → trigger sync |
+| Register | `auth.signUp(email, password)` → show "check your email" confirmation |
+| Forgot password | `auth.resetPasswordForEmail(email)` → snackbar + pop |
+
+Auth state is exposed as a `StreamProvider<User?>` from `onAuthStateChange`. Widgets react to null (signed out) vs non-null (signed in).
+
+## Settings Persistence
+
+Settings are stored locally in SQLite and optionally synced to Supabase:
+
+```
+settings(key TEXT PK, value TEXT, updated_at TEXT)
+```
+
+Known keys:
+- `unit_system` — `'metric'` (default) or `'imperial'`
+- `default_layer` — `'trail'` | `'satellite'` | `'topo'` | `'street'`
+
+On sign-in, `unit_system` is pushed to the Supabase `user_settings` table. The `SettingsNotifier` (AsyncNotifier) loads values in its `build()` method; widgets read with `ref.watch(settingsProvider).value?.isImperial ?? false`.
+
+## Offline Tile Download
+
+Offline map regions are managed entirely through MapLibre's built-in offline API — no custom SQLite tables needed.
+
+### Flow
+1. User opens Settings → Downloaded Regions → "Download region"
+2. **Bbox Selection Screen** — full-screen map with a draggable rectangle overlay
+   - Rectangle is tracked in screen-space `Offset` coordinates (not LatLng)
+   - Four corner dots respond to long-press + drag; `GestureDetector.onLongPressMoveUpdate` moves corners
+   - Corners are converted to `LatLng` via `controller.toLatLng(Point<double>)` on drag-end and save
+   - Real-time size estimate: tile-count formula across zoom levels 5–14, ~15 KB/tile
+3. On save: `downloadOfflineRegion(OfflineRegionDefinition(...), metadata: {name, estimatedSizeMB}, onEvent: callback)`
+4. Progress reported via `DownloadRegionStatus` stream (`InProgress`, `Error`, `Success`)
+
+### Region Storage
+MapLibre stores tiles internally. Region metadata (name, estimated size) is passed as a `Map<String, dynamic>` metadata argument and retrieved via `OfflineRegion.metadata`.
+
+### Region Management
+- **List**: `getListOfRegions()` → `List<OfflineRegion>` → wrapped as `OfflineRegionInfo`
+- **View**: collapse sheet to peek, zoom map to `region.bounds`
+- **Delete**: `deleteOfflineRegion(region.id)` with confirmation dialog
+
+### OfflineRegionDefinition
+```dart
+OfflineRegionDefinition(
+  bounds: LatLngBounds(southwest: sw, northeast: ne),
+  mapStyleUrl: activeLayer.styleUrl,
+  minZoom: 5,
+  maxZoom: 14,
+  pixelDensity: 1,
+)
+```
+
 ## Component / Screen Structure
 
 ```
@@ -137,11 +196,22 @@ App
     │   └── ActionButtons (GPX, save, delete, undo/redo)
     ├── ElevationProfile (chart)
     ├── RouteActionBar (save/discard when creating/editing)
-    └── Modals
-        ├── RouteListModal
-        ├── NameRouteModal
-        ├── AccountModal (auth)
-        └── UnsavedChangesModal
+    ├── LayerPopover (map style switcher)
+    ├── SearchModal (Nominatim geocoding)
+    ├── DownloadedRegionsSheet (offline regions list, View/Delete)
+    ├── Modals
+    │   ├── RouteListModal
+    │   ├── NameRouteModal
+    │   ├── SignInSheet (auth: sign-in / register / forgot password)
+    │   └── UnsavedChangesModal
+    ├── SettingsScreen (push navigation)
+    │   ├── Units toggle (km↔mi)
+    │   ├── Default layer dropdown
+    │   └── Account section (sign in / sync / sign out)
+    └── BboxSelectionScreen (push navigation)
+        ├── Draggable bbox rectangle (4 corner dots)
+        ├── Size estimate display
+        └── Name input + download button
 
 ```
 
