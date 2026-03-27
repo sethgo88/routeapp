@@ -87,6 +87,42 @@ Auth stream: `Supabase.instance.client.auth.onAuthStateChange.map((e) => e.sessi
 Use `ref.watch(settingsProvider).value?.isImperial ?? false` in widgets to read
 the setting with a safe fallback while loading.
 
+## Phase 3 Patterns
+
+**MapLibre offline API — top-level functions:**
+`downloadOfflineRegion`, `getListOfRegions`, `deleteOfflineRegion` are imported
+directly from `maplibre_gl` — they are NOT methods on the map controller.
+`OfflineRegionDefinition` takes `double` zoom levels; metadata is a plain
+`Map<String, dynamic>` (stored by MapLibre, retrieved via `OfflineRegion.metadata`).
+
+**Bbox screen-space → LatLng conversion:**
+The bbox selection rectangle is tracked as four screen-space `Offset` values
+(left, top, right, bottom), not `LatLng`. Corners are converted only when needed
+(drag-end for size estimate, save for download) via:
+```dart
+final sw = await controller.toLatLng(Point<double>(_left, _bottom));
+final ne = await controller.toLatLng(Point<double>(_right, _top));
+```
+This avoids fighting map projection during drag and keeps corner movement 1:1 with the finger.
+
+**Draggable corner dots (long-press gesture):**
+Each corner is a `GestureDetector` using `onLongPressStart` / `onLongPressMoveUpdate` /
+`onLongPressEnd`. Long-press (not tap-drag) prevents accidental corner moves when
+panning the map. Map scroll/zoom gestures are disabled while `_draggingCorner != null`.
+
+**DraggableScrollableController for regions sheet:**
+The Downloaded Regions sheet uses `DraggableScrollableController` to programmatically
+collapse to peek height when "View" is tapped, so the user sees the map zoom to the
+region bounds:
+```dart
+await _sheetController.animateTo(peekFraction, duration: 250ms, curve: easeOut);
+widget.onZoomToBounds(region.bounds);
+```
+
+**Size estimation (~15 KB/tile):**
+Tile count is summed across zoom levels 5–14 using `ceil(span / 360 * 2^z)` per axis.
+Multiplied by 15 KB gives a rough MB estimate displayed in real-time on the bbox screen.
+
 ## Gotchas
 
 _Fill in as discovered during implementation._

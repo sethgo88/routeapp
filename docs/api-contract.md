@@ -156,3 +156,72 @@ Route Builder exports GPX 1.1 with track points that include elevation.
 { "user_id": "uuid", "key": "unit_system", "value": "metric", "updated_at": "..." }
 ```
 Use `ON CONFLICT (user_id, key) DO UPDATE`.
+
+**Settings fetch (pull):**
+`GET /rest/v1/user_settings?user_id=eq.UUID&key=eq.unit_system&select=value` — returns current value for a given key.
+
+---
+
+## MapLibre Offline API
+
+The `maplibre_gl` package exposes three top-level functions for offline tile management. These are **not** methods on the map controller — they are standalone functions imported from the package.
+
+### Download Region
+
+```dart
+await downloadOfflineRegion(
+  OfflineRegionDefinition(
+    bounds: LatLngBounds(southwest: sw, northeast: ne),
+    mapStyleUrl: 'https://tiles.stadiamaps.com/styles/outdoors.json?api_key=KEY',
+    minZoom: 5,
+    maxZoom: 14,
+    pixelDensity: 1,
+  ),
+  metadata: {
+    'name': 'Region Name',
+    'estimatedSizeMB': 42.5,
+  },
+  onEvent: (DownloadRegionStatus status) {
+    // status is InProgress(count, maximum) | Error(error) | Success
+  },
+);
+```
+
+- `bounds`: `LatLngBounds` with `southwest` and `northeast` corners
+- `mapStyleUrl`: full style URL including API key — tiles for this style are cached
+- `minZoom` / `maxZoom`: `double` zoom range (5–14 is a good default for hiking)
+- `pixelDensity`: `1` for standard tiles
+- `metadata`: arbitrary `Map<String, dynamic>` stored alongside the region
+
+### List Regions
+
+```dart
+final List<OfflineRegion> regions = await getListOfRegions();
+```
+
+Each `OfflineRegion` exposes:
+- `id`: `int` — region identifier
+- `definition`: `OfflineRegionDefinition` (bounds, style, zoom range)
+- `metadata`: `Map<String, dynamic>` — the metadata passed at download time
+
+### Delete Region
+
+```dart
+await deleteOfflineRegion(regionId); // int
+```
+
+Permanently removes cached tiles for the region.
+
+### Size Estimation Formula
+
+Estimated before download using a tile-count calculation:
+```
+For each zoom level z in [minZoom..maxZoom]:
+  tilesAtZoom = 2^z
+  latTiles = ceil(latSpan / 180 * tilesAtZoom)
+  lonTiles = ceil(lonSpan / 360 * tilesAtZoom)
+  totalTiles += latTiles * lonTiles
+
+estimatedMB = totalTiles * 15KB / 1024KB
+```
+~15 KB/tile is a rough average for vector tiles.
