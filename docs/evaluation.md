@@ -17,34 +17,38 @@ Rate each criterion 1–5 after completing the full feature checklist:
 
 ## Flutter
 
-**Setup date:** _
-**Setup time:** _
+**Setup date:** 2026-03-27
+**Setup time:** Phase 1 complete
 
 ### Feature progress
 | Feature | Done | Notes |
 |---|---|---|
-| Map view (MapLibre + Stadia) | | |
-| Waypoint drop (long-press) | | |
-| Valhalla routing | | |
-| Draggable markers | | |
-| Snap toggle | | |
-| Elevation chart + tap-to-fly | | |
-| GPX import | | |
-| GPX export | | |
-| SQLite save/load | | |
-| Route list | | |
-| GPS centering | | |
-| Supabase auth | | |
-| Cloud sync | | |
+| Map view (MapLibre + Stadia) | ✓ | Stadia outdoors style, full screen |
+| Waypoint drop (long-press) | ✓ | Long-press on editor map |
+| Valhalla routing | ✓ | Segmented per-waypoint snap, debounced 600ms |
+| Draggable markers | ✓ | MapLibre symbol API with drag |
+| Snap toggle | ✓ | Per-waypoint snapAfter flag, magnet icon in editor |
+| Elevation chart + tap-to-fly | ✓ | Index-based cross-ref to route coords; tap flies camera |
+| GPX import | ✓ | File picker → editor with imported waypoints |
+| GPX export | ✓ | Android share intent via share_plus |
+| SQLite save/load | ✓ | sqflite, soft deletes, color + stats stored |
+| Route list | ✓ | Always-peeking bottom sheet on home map |
+| GPS centering | ✓ | geolocator with permission request |
+| Supabase auth | — | Phase 2 |
+| Cloud sync | — | Phase 2 |
 
 ### DX Notes
-_Observations about Claude effectiveness, Dart/Flutter friction, hot reload, etc._
+- Phase 1 implemented by Claude on first pass. Home map / editor split required a full UI redesign from the initial scaffold.
+- `maplibre_gl` symbol API works for draggable markers; custom bitmaps via `ui.PictureRecorder` give colored circles matching spec.
+- `DraggableScrollableSheet` with `snap: true` + `snapSizes` works cleanly for both the route list sheet and editor stats sheet.
+- `queryRenderedFeatures` on line layers enables route tap detection on home map.
+- Elevation tap-to-fly works because the elevation API returns one point per input coordinate (1:1 index mapping to route geometry).
 
 ### Build Notes
-_Setup steps that were tricky, commands used, any Windows 11 gotchas._
+_To be filled after first device test._
 
 ### Map Rendering Notes
-_Subjective quality, performance observations._
+_To be filled after first device test._
 
 ---
 

@@ -132,6 +132,44 @@ class RouteNotifier extends Notifier<RouteState> {
       isSnapping: state.isSnapping,
     );
   }
+
+  /// Saves the current editing state to the database, then clears the editor.
+  Future<void> saveCurrentRoute({
+    required String name,
+    RouteStats? stats,
+  }) async {
+    final s = state;
+    if (s.route == null || s.waypoints.isEmpty) return;
+    if (s.editingMode == EditingMode.editing && s.activeRouteId != null) {
+      await db.updateRoute(
+        id: s.activeRouteId!,
+        name: name,
+        color: s.routeColor,
+        waypoints: s.waypoints,
+        geometry: s.route!,
+        stats: stats ?? s.routeStats,
+      );
+    } else {
+      await db.saveRoute(
+        name: name,
+        color: s.routeColor,
+        waypoints: s.waypoints,
+        geometry: s.route!,
+        stats: stats ?? s.routeStats,
+      );
+    }
+    state = RouteState(isSnapping: s.isSnapping);
+  }
+
+  /// Soft-deletes the currently active route, then clears the editor.
+  Future<void> deleteCurrentRoute() async {
+    final s = state;
+    if (s.activeRouteId != null) {
+      await db.deleteRoute(s.activeRouteId!);
+    }
+    state = RouteState(isSnapping: s.isSnapping);
+  }
+
 }
 
 final routeProvider =
