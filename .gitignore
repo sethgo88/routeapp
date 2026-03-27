@@ -1,0 +1,28 @@
+# Flutter
+flutter/.dart_tool/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.packages
+flutter/build/
+flutter/.env
+
+# Tauri
+tauri/node_modules/
+tauri/dist/
+tauri/gen/android/app/build/
+tauri/src-tauri/target/
+tauri/.env
+
+# Kotlin
+kotlin/.gradle/
+kotlin/build/
+kotlin/app/build/
+kotlin/local.properties
+kotlin/.env
+kotlin/*.jks
+kotlin/*.keystore
+
+# General
+.DS_Store
+Thumbs.db
+*.log
