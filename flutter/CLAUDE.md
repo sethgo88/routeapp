@@ -77,7 +77,35 @@ SUPABASE_ANON_KEY=...
 Pass at build time: `flutter run --dart-define=STADIA_API_KEY=xxx`
 Read in Dart: `const String.fromEnvironment('STADIA_API_KEY')`
 
+## Documentation Maintenance
+
+| Change | Update |
+|---|---|
+| New package added | `docs/framework-notes/flutter.md` (Packages table) |
+| MapLibre usage pattern discovered | `docs/framework-notes/flutter.md` |
+| SQLite schema change | `docs/architecture.md` + `lib/services/db.dart` migrations |
+| GPX import/export change | `docs/api-contract.md` |
+| Sync or auth flow change | `docs/architecture.md` |
+| New Android permission | `android/app/src/main/AndroidManifest.xml` + `docs/setup-android.md` |
+| Gotcha or build issue found | `docs/framework-notes/flutter.md` (Gotchas section) |
+
+## Testing
+
+```bash
+flutter test              # run all tests
+flutter test --coverage   # with coverage
+```
+
+- **Unit tests** — test Riverpod notifiers and pure functions (polyline6 decoder, GPX
+  parser) without a running device.
+- **Widget tests** — use `WidgetTester` to verify UI behaviour without a device.
+- **Integration tests** — use `flutter drive` or `integration_test` package for
+  on-device tests.
+- Test files live alongside the file under test: `route_notifier_test.dart` next to
+  `route_notifier.dart`.
+
 ## Docs
 - `docs/framework-notes/flutter.md` — setup, packages, patterns, gotchas
 - `docs/architecture.md` — shared domain model, state shape, sync strategy
 - `docs/api-contract.md` — Valhalla API, GPX format, Supabase schema
+- `docs/testing.md` — cross-framework testing philosophy

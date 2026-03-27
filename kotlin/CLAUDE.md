@@ -85,7 +85,33 @@ buildConfigField("String", "STADIA_API_KEY", "\"${localProps["STADIA_API_KEY"]}\
 ## Setup Prerequisites
 See `docs/setup-android.md` (Android Studio, SDK). No additional tooling needed for Kotlin.
 
+## Documentation Maintenance
+
+| Change | Update |
+|---|---|
+| New Gradle dependency | `docs/framework-notes/kotlin.md` |
+| MapLibre Compose pattern discovered | `docs/framework-notes/kotlin.md` |
+| Room schema change | `docs/architecture.md` + increment `AppDatabase` version + add migration |
+| GPX import/export change | `docs/api-contract.md` |
+| Sync or auth flow change | `docs/architecture.md` |
+| New Android permission | `app/src/main/AndroidManifest.xml` + `docs/setup-android.md` |
+| Gotcha or build issue found | `docs/framework-notes/kotlin.md` (Gotchas section) |
+
+## Testing
+
+```bash
+./gradlew test               # JVM unit tests (fast, no device)
+./gradlew connectedCheck     # instrumented tests (requires device/emulator)
+```
+
+- **Unit tests** (`src/test/`): test ViewModels, pure functions (polyline6 decoder, GPX
+  parser). Use `kotlinx-coroutines-test` with `runTest`.
+- **Instrumented tests** (`src/androidTest/`): test Room DAOs against real SQLite using
+  `Room.inMemoryDatabaseBuilder`.
+- Mock Supabase with a test double — do not make real network calls in tests.
+
 ## Docs
 - `docs/framework-notes/kotlin.md` — Compose patterns, Room, Ktor, MapLibre-compose
 - `docs/architecture.md` — shared domain model
 - `docs/api-contract.md` — Valhalla API, GPX format, Supabase schema
+- `docs/testing.md` — cross-framework testing philosophy
