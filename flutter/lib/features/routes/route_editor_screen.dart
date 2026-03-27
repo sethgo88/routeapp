@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../constants/map.dart';
+import '../../constants/map_layers.dart';
 import '../../models/waypoint.dart';
 import '../../state/route_notifier.dart';
 import '../../state/route_state.dart';
 import '../../state/routing_provider.dart';
+import '../../state/settings_provider.dart';
 import '../map/waypoint_markers.dart';
 import '../map/route_polyline.dart';
+import '../map/layer_popover.dart';
 import 'editor_stats_sheet.dart';
 
 class RouteEditorScreen extends ConsumerStatefulWidget {
@@ -33,6 +35,9 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
   MaplibreMapController? _mapController;
   Timer? _routingDebounce;
   String? _selectedWaypointId;
+  bool _showLayerPopover = false;
+  // Incremented on style reload to force overlay widgets to rebuild.
+  int _styleVersion = 0;
 
   @override
   void initState() {
@@ -69,6 +74,12 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
   void _onMapCreated(MaplibreMapController controller) {
     _mapController = controller;
     setState(() {});
+  }
+
+  void _onStyleLoaded() {
+    // Increment version so overlay widgets (waypoint markers) rebuild
+    // and re-register their custom images.
+    setState(() => _styleVersion++);
   }
 
   void _addWaypoint(LatLng coords) {
@@ -164,13 +175,31 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
     _scheduleRouting();
   }
 
+  void _onLayerSelected(MapLayer layer) {
+    setState(() => _showLayerPopover = false);
+    ref.read(activeLayerProvider.notifier).state = layer;
+    ref.read(settingsProvider.notifier).setDefaultLayer(layer);
+    _mapController?.setStyleString(layer.styleUrl);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Listen for layer changes triggered from outside (e.g., settings screen).
+    ref.listen<MapLayer?>(activeLayerProvider, (prev, next) {
+      if (next != null && prev != next && _mapController != null) {
+        _mapController!.setStyleString(next.styleUrl);
+      }
+    });
+
     final state = ref.watch(routeProvider);
     final canUndo = ref.read(routeProvider.notifier).canUndo;
     final canRedo = ref.read(routeProvider.notifier).canRedo;
     final canDelete = _selectedWaypointId != null &&
         state.waypoints.length > 1;
+
+    final activeLayer = ref.watch(activeLayerProvider) ??
+        ref.watch(settingsProvider).value?.defaultLayer ??
+        MapLayer.trail;
 
     return PopScope(
       canPop: false,
@@ -184,12 +213,13 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
           children: [
             // Full-screen map
             MaplibreMap(
-              styleString: mapStyleUrl,
+              styleString: activeLayer.styleUrl,
               initialCameraPosition: const CameraPosition(
                 target: LatLng(37.7749, -122.4194),
                 zoom: 12,
               ),
               onMapCreated: _onMapCreated,
+              onStyleLoadedCallback: _onStyleLoaded,
               onMapLongClick: (_, coords) => _addWaypoint(coords),
               myLocationEnabled: true,
               myLocationTrackingMode: MyLocationTrackingMode.none,
@@ -198,6 +228,7 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
             // Route polyline
             if (_mapController != null && state.route != null)
               RoutePolylineOverlay(
+                key: ValueKey('polyline-$_styleVersion'),
                 mapController: _mapController!,
                 geometry: state.route!,
                 color: state.routeColor,
@@ -206,6 +237,7 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
             // Waypoint markers
             if (_mapController != null && state.waypoints.isNotEmpty)
               WaypointMarkersOverlay(
+                key: ValueKey('markers-$_styleVersion'),
                 mapController: _mapController!,
                 waypoints: state.waypoints,
                 routeColor: state.routeColor,
@@ -278,9 +310,9 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
                     children: [
                       _EditorIconButton(
                         icon: Icons.layers,
-                        onPressed: () {
-                          // TODO Phase 2: Map layer popover
-                        },
+                        highlighted: _showLayerPopover,
+                        onPressed: () => setState(
+                            () => _showLayerPopover = !_showLayerPopover),
                       ),
                       const SizedBox(height: 8),
                       _EditorIconButton(
@@ -334,6 +366,31 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
                 ),
               ),
             ),
+
+            // Layer popover — tap-outside dismissal underlay
+            if (_showLayerPopover)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => setState(() => _showLayerPopover = false),
+                  behavior: HitTestBehavior.translucent,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+
+            // Layer popover — positioned left of the layers button
+            if (_showLayerPopover)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 54),
+                    child: LayerPopover(
+                      activeLayer: activeLayer,
+                      onLayerSelected: _onLayerSelected,
+                    ),
+                  ),
+                ),
+              ),
 
             // Editor Stats Sheet
             EditorStatsSheet(

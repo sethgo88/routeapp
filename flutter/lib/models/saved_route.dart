@@ -11,6 +11,8 @@ class SavedRoute {
   final Map<String, dynamic> geometry; // GeoJSON LineString Feature
   final RouteStats? stats;
   final String createdAt;
+  final String updatedAt;
+  final String? deletedAt;
 
   const SavedRoute({
     required this.id,
@@ -21,6 +23,8 @@ class SavedRoute {
     required this.geometry,
     this.stats,
     required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
   });
 
   factory SavedRoute.fromDb(Map<String, dynamic> row) => SavedRoute(
@@ -38,5 +42,7 @@ class SavedRoute {
                 jsonDecode(row['stats'] as String) as Map<String, dynamic>)
             : null,
         createdAt: row['created_at'] as String,
+        updatedAt: row['updated_at'] as String,
+        deletedAt: row['deleted_at'] as String?,
       );
 }

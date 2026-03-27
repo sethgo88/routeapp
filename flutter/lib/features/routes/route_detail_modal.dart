@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../models/saved_route.dart';
+import '../../utils/format.dart';
 
 class RouteDetailModal extends StatefulWidget {
   final SavedRoute route;
   final VoidCallback onClose;
   final VoidCallback onEdit;
   final VoidCallback onExport;
+  final bool imperial;
 
   const RouteDetailModal({
     super.key,
@@ -13,6 +15,7 @@ class RouteDetailModal extends StatefulWidget {
     required this.onClose,
     required this.onEdit,
     required this.onExport,
+    this.imperial = false,
   });
 
   @override
@@ -44,11 +47,11 @@ class _RouteDetailModalState extends State<RouteDetailModal>
   String _statsLine() {
     final s = widget.route.stats;
     if (s == null) return '';
-    final d = s.distanceKm;
-    final dist = d >= 1
-        ? '${d.toStringAsFixed(1)} km'
-        : '${(d * 1000).toStringAsFixed(0)} m';
-    return '$dist · ↑ ${s.gainM.toStringAsFixed(0)} m · ↓ ${s.lossM.toStringAsFixed(0)} m';
+    final imp = widget.imperial;
+    final dist = formatDistance(s.distanceKm, imperial: imp);
+    final gain = '↑ ${formatElevation(s.gainM, imperial: imp)}';
+    final loss = '↓ ${formatElevation(s.lossM, imperial: imp)}';
+    return '$dist · $gain · $loss';
   }
 
   @override

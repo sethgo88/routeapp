@@ -43,6 +43,8 @@ Future<Database> getDb() async {
   return _db!;
 }
 
+// ── Read ─────────────────────────────────────────────────────────────────────
+
 Future<List<SavedRoute>> listRoutes() async {
   final db = await getDb();
   final rows = await db.query(
@@ -50,6 +52,13 @@ Future<List<SavedRoute>> listRoutes() async {
     where: 'deleted_at IS NULL',
     orderBy: 'created_at DESC',
   );
+  return rows.map(SavedRoute.fromDb).toList();
+}
+
+/// Returns ALL routes including soft-deleted ones (for sync push).
+Future<List<SavedRoute>> listRoutesAll() async {
+  final db = await getDb();
+  final rows = await db.query('routes', orderBy: 'created_at DESC');
   return rows.map(SavedRoute.fromDb).toList();
 }
 
@@ -64,6 +73,20 @@ Future<SavedRoute?> getRoute(int id) async {
   if (rows.isEmpty) return null;
   return SavedRoute.fromDb(rows.first);
 }
+
+Future<SavedRoute?> getRouteByRemoteId(String remoteId) async {
+  final db = await getDb();
+  final rows = await db.query(
+    'routes',
+    where: 'remote_id = ?',
+    whereArgs: [remoteId],
+    limit: 1,
+  );
+  if (rows.isEmpty) return null;
+  return SavedRoute.fromDb(rows.first);
+}
+
+// ── Write ────────────────────────────────────────────────────────────────────
 
 Future<int> saveRoute({
   required String name,
@@ -128,6 +151,49 @@ Future<String?> deleteRoute(int id) async {
   );
   return remoteId;
 }
+
+/// Set the remote_id for a route after a successful Supabase push.
+Future<void> setRemoteId(int localId, String remoteId) async {
+  final db = await getDb();
+  await db.update(
+    'routes',
+    {'remote_id': remoteId},
+    where: 'id = ?',
+    whereArgs: [localId],
+  );
+}
+
+/// Insert a route pulled from Supabase that does not yet exist locally.
+Future<void> insertFromRemote({
+  required String remoteId,
+  required String name,
+  required String color,
+  required String waypointsJson,
+  required String geometryJson,
+  String? statsJson,
+  required String createdAt,
+  required String updatedAt,
+  String? deletedAt,
+}) async {
+  final db = await getDb();
+  await db.insert(
+    'routes',
+    {
+      'remote_id': remoteId,
+      'name': name,
+      'color': color,
+      'waypoints': waypointsJson,
+      'geometry': geometryJson,
+      'stats': statsJson,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'deleted_at': deletedAt,
+    },
+    conflictAlgorithm: ConflictAlgorithm.ignore,
+  );
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
 
 Future<String?> getSetting(String key) async {
   final db = await getDb();

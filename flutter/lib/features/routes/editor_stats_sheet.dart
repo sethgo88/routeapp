@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/route_notifier.dart';
 import '../../state/route_state.dart';
+import '../../state/settings_provider.dart';
+import '../../utils/format.dart';
 import '../elevation/elevation_profile.dart';
 
 // Color swatches: white, black, gray, then light+dark pairs of
@@ -82,13 +84,11 @@ class _EditorStatsSheetState extends ConsumerState<EditorStatsSheet> {
     super.dispose();
   }
 
-  String _estimatedTime(double distanceKm) {
+  String _estimatedTime(double distanceKm, {bool imperial = false}) {
     final pace = double.tryParse(_paceCtrl.text);
     if (pace == null || pace <= 0) return '—';
-    final totalMinutes = (distanceKm * pace).round();
-    final h = totalMinutes ~/ 60;
-    final m = totalMinutes % 60;
-    return h > 0 ? '${h}h ${m}m' : '${m}m';
+    final mins = estimatedMinutes(distanceKm, pace, imperial: imperial);
+    return formatDuration(mins);
   }
 
   Future<void> _save() async {
@@ -295,21 +295,23 @@ class _EditorStatsSheetState extends ConsumerState<EditorStatsSheet> {
 
   Widget _buildPaceRow(RouteState state) {
     final distKm = state.routeStats?.distanceKm ?? 0.0;
+    final imperial =
+        ref.watch(settingsProvider).value?.isImperial ?? false;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
           SizedBox(
-            width: 120,
+            width: 130,
             child: TextField(
               controller: _paceCtrl,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Pace (min/km)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: paceLabel(imperial: imperial),
+                border: const OutlineInputBorder(),
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 isDense: true,
               ),
               onChanged: (_) => setState(() {}),
@@ -317,7 +319,7 @@ class _EditorStatsSheetState extends ConsumerState<EditorStatsSheet> {
           ),
           const SizedBox(width: 16),
           Text(
-            'Est. time: ${_estimatedTime(distKm)}',
+            'Est. time: ${_estimatedTime(distKm, imperial: imperial)}',
             style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
         ],
