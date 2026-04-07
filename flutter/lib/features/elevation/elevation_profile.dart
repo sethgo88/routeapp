@@ -143,8 +143,9 @@ class ElevationProfile extends StatelessWidget {
                     barWidth: 2,
                     dotData: FlDotData(
                       show: markerIndex != null,
-                      checkToShowDot: (spot, _) =>
-                          markerIndex != null && spot.spotIndex == markerIndex,
+                      checkToShowDot: (spot, barData) =>
+                          markerIndex != null &&
+                          barData.spots.indexOf(spot) == markerIndex,
                       getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
                         radius: 4,
                         color: const Color(0xFF3b82f6),

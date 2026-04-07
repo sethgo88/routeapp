@@ -13,18 +13,21 @@ import '../../services/db.dart' as db;
 class SyncService {
   SupabaseClient get _client => Supabase.instance.client;
 
-  Future<void> sync() async {
+  /// Returns [true] if sync completed successfully, [false] if unreachable or failed.
+  Future<bool> sync() async {
     final user = _client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) return false;
 
     try {
       await _push(user.id);
       await _pull(user.id);
       await _syncSettings(user.id);
+      return true;
     } catch (e) {
       // Sync is best-effort; don't crash the app on failure.
       // ignore: avoid_print
       print('Sync error: $e');
+      return false;
     }
   }
 

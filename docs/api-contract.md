@@ -17,7 +17,7 @@ Other useful styles: `alidade_smooth`, `alidade_smooth_dark`, `outdoors` (best f
 ## Valhalla Routing
 
 ### Route Request
-`POST /route/v1?api_key=KEY`
+`POST /route?api_key=KEY` (OSM public instance) or `POST /route/v1?api_key=KEY` (Stadia)
 
 ```json
 {
@@ -61,7 +61,7 @@ Other useful styles: `alidade_smooth`, `alidade_smooth_dark`, `outdoors` (best f
 Standard Google polyline uses `1e5`. Valhalla uses `1e6`. The algorithm is identical but the precision constant differs. Decoded coordinate order is `[lat, lon]` — **flip to `[lon, lat]` for GeoJSON**.
 
 ### Elevation Request
-`POST /elevation/v1?api_key=KEY`
+`POST /height?api_key=KEY` (OSM public instance) or `POST /elevation/v1?api_key=KEY` (Stadia)
 
 ```json
 {

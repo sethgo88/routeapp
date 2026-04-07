@@ -28,6 +28,8 @@ class RoutingNotifier extends Notifier<AsyncValue<RouteResult?>> {
       ref.read(routeProvider.notifier).setRouteStats(result.stats);
       state = AsyncValue.data(result);
     } catch (e, st) {
+      // ignore: avoid_print
+      print('Routing error: $e\n$st');
       state = AsyncValue.error(e, st);
     } finally {
       ref.read(routeProvider.notifier).setIsLoading(false);
