@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import '../../models/saved_route.dart';
 import '../../state/settings_provider.dart';
 import '../../utils/format.dart';
+import '../gpx/gpx_exporter.dart';
 import '../gpx/gpx_parser.dart';
 import '../routes/route_list_modal.dart' show savedRoutesProvider;
 import '../routes/route_editor_screen.dart';
@@ -112,25 +115,68 @@ class RouteListSheet extends ConsumerWidget {
                 ),
               ),
 
-              // Import button — fixed at bottom
+              // Action buttons — fixed at bottom
               SafeArea(
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.upload_file),
-                      label: const Text('Import GPX'),
-                      onPressed: () => _importGpx(context, ref),
-                    ),
-                  ),
+                  child: Builder(builder: (context) {
+                    final hasRoutes =
+                        routesAsync.value?.isNotEmpty ?? false;
+                    if (hasRoutes) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.upload_file),
+                              label: const Text('Import GPX'),
+                              onPressed: () => _importGpx(context, ref),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.download),
+                              label: const Text('Export All'),
+                              onPressed: () => _exportAll(
+                                  context, routesAsync.value!),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Import GPX'),
+                        onPressed: () => _importGpx(context, ref),
+                      ),
+                    );
+                  }),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Future<void> _exportAll(
+      BuildContext context, List<SavedRoute> routes) async {
+    if (routes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No routes to export')),
+      );
+      return;
+    }
+    final gpx = exportAllGpx(routes);
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/routes_export.gpx');
+    await file.writeAsString(gpx);
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)]),
     );
   }
 

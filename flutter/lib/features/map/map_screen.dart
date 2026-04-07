@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -42,7 +43,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final settings = await ref.read(settingsProvider.future);
       if (mounted &&
           ref.read(activeLayerProvider) == null) {
-        ref.read(activeLayerProvider.notifier).state = settings.defaultLayer;
+        ref.read(activeLayerProvider.notifier).set(settings.defaultLayer);
       }
     });
   }
@@ -197,11 +198,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _onLayerSelected(MapLayer layer) {
     setState(() => _showLayerPopover = false);
-    ref.read(activeLayerProvider.notifier).state = layer;
+    ref.read(activeLayerProvider.notifier).set(layer);
     ref.read(settingsProvider.notifier).setDefaultLayer(layer);
     // Reload map style.
     setState(() => _mapStyleLoaded = false);
-    _mapController?.setStyleString(layer.styleUrl);
+    _mapController?.setStyle(layer.styleUrl);
     // _onStyleLoaded will be called by the map and set _mapStyleLoaded = true.
   }
 
@@ -242,7 +243,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ref.listen<MapLayer?>(activeLayerProvider, (prev, next) {
       if (next != null && prev != next && _mapController != null) {
         setState(() => _mapStyleLoaded = false);
-        _mapController!.setStyleString(next.styleUrl);
+        _mapController!.setStyle(next.styleUrl);
       }
     });
 

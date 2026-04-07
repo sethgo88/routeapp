@@ -68,7 +68,7 @@ class SettingsScreen extends ConsumerWidget {
                       .read(settingsProvider.notifier)
                       .setDefaultLayer(layer);
                   // Also update the active session layer.
-                  ref.read(activeLayerProvider.notifier).state = layer;
+                  ref.read(activeLayerProvider.notifier).set(layer);
                 },
               ),
             ),
@@ -118,7 +118,15 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (signedIn == true) {
       // Trigger cloud sync after successful sign-in.
-      await syncService.sync();
+      final ok = await syncService.sync();
+      if (!ok && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Can't sync at this time"),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 }
@@ -143,10 +151,15 @@ class _SignedInTile extends ConsumerWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Syncing…')),
             );
-            await syncService.sync();
+            final ok = await syncService.sync();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sync complete')),
+                ok
+                    ? const SnackBar(content: Text('Sync complete'))
+                    : SnackBar(
+                        content: const Text("Can't sync at this time"),
+                        backgroundColor: Colors.red.shade700,
+                      ),
               );
             }
           },

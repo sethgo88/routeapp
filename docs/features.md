@@ -98,8 +98,10 @@ A mobile app for planning and saving trail runs. Users create routes on a map, v
 **Layout (top → bottom):**
 
 1. **Handle** — small grey line centered at top of sheet
-2. **Route list** — scrollable, fills all available space between handle and import button
-3. **Import button** — fixed at the very bottom of the sheet
+2. **Route list** — scrollable, fills all available space between handle and the bottom buttons
+3. **Bottom buttons** — fixed at the very bottom of the sheet:
+   - When routes exist: **Import GPX** and **Export All** side by side (equal width)
+   - When no routes: **Import GPX** only (full width)
 
 **Route row:**
 - Route name (left-aligned)
@@ -239,6 +241,13 @@ The magnet toggle controls whether the segment *after* the next dropped waypoint
 ### Default Map Layer
 Select / dropdown box. Same layer options as the layer switcher popover.
 
+### Sync error handling
+
+When the app cannot reach Supabase (network offline, server unreachable), sync fails gracefully:
+- Errors are never surfaced as crashes or raw exception text.
+- A red "Can't sync at this time" SnackBar appears in place of the "Sync complete" message.
+- Applies both to the manual "Sync now" action and the automatic sync triggered after sign-in.
+
 ### Account
 
 **Signed out:**
@@ -324,9 +333,11 @@ Estimated download size: 42 MB
 
 ## 12. GPX Export
 
-**Entry point:** Export button in the Route Detail Modal.
+**Entry point:** Export button in the Route Detail Modal (single route), or "Export All" button in the Route List Sheet (all routes).
 
-**Flow:** Triggers the Android system share intent with the `.gpx` file. The system sheet gives the user native options: save to Downloads, share via messaging, open in another app, etc.
+**Single-route flow:** Triggers the Android system share intent with the `.gpx` file. The system sheet gives the user native options: save to Downloads, share via messaging, open in another app, etc.
+
+**Export All flow:** Generates a single GPX 1.1 file containing one `<trk>` element per saved route. Triggers the Android share intent with that file. Routes with no geometry (no waypoints ever routed) are omitted. The "Export All" button is only shown when at least one route exists.
 
 ---
 

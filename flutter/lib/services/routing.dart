@@ -72,8 +72,8 @@ Future<List<List<double>>> _fetchRouteShape(
 ) async {
   final url = Uri.parse(
     stadiaApiKey.isNotEmpty
-        ? '$valhallaBaseUrl/route/v1?api_key=$stadiaApiKey'
-        : '$valhallaBaseUrl/route/v1',
+        ? '$valhallaBaseUrl/route?api_key=$stadiaApiKey'
+        : '$valhallaBaseUrl/route',
   );
   final body = {
     'locations': [
@@ -109,8 +109,8 @@ Future<({List<List<double>> rangeHeight, List<double> heights})>
     _fetchElevation(List<List<double>> coords) async {
   final url = Uri.parse(
     stadiaApiKey.isNotEmpty
-        ? '$valhallaBaseUrl/elevation/v1?api_key=$stadiaApiKey'
-        : '$valhallaBaseUrl/elevation/v1',
+        ? '$valhallaBaseUrl/height?api_key=$stadiaApiKey'
+        : '$valhallaBaseUrl/height',
   );
   final body = {
     'shape': coords.map((c) => {'lon': c[0], 'lat': c[1]}).toList(),
@@ -155,8 +155,8 @@ Future<RouteResult> fetchRoute(
 ) async {
   final url = Uri.parse(
     stadiaApiKey.isNotEmpty
-        ? '$valhallaBaseUrl/route/v1?api_key=$stadiaApiKey'
-        : '$valhallaBaseUrl/route/v1',
+        ? '$valhallaBaseUrl/route?api_key=$stadiaApiKey'
+        : '$valhallaBaseUrl/route',
   );
   final response = await http.post(
     url,
@@ -220,10 +220,21 @@ Future<RouteResult> fetchRouteSegmented(List<Waypoint> waypoints) async {
     allCoords.addAll(allCoords.isEmpty ? segCoords : segCoords.skip(1));
   }
 
-  final elevation = await _fetchElevation(allCoords);
-  final gainLoss = _calcGainLoss(elevation.heights);
-  final distanceKm = elevation.rangeHeight.isNotEmpty
-      ? elevation.rangeHeight.last[0] / 1000
+  List<List<double>> elevRangeHeight = [];
+  List<double> elevHeights = [];
+  try {
+    final elevation = await _fetchElevation(allCoords);
+    elevRangeHeight = elevation.rangeHeight;
+    elevHeights = elevation.heights;
+  } catch (e) {
+    // Elevation is best-effort; line still draws without it.
+    // ignore: avoid_print
+    print('Elevation fetch failed (routing will still draw): $e');
+  }
+
+  final gainLoss = _calcGainLoss(elevHeights);
+  final distanceKm = elevRangeHeight.isNotEmpty
+      ? elevRangeHeight.last[0] / 1000
       : 0.0;
 
   return RouteResult(
@@ -232,9 +243,7 @@ Future<RouteResult> fetchRouteSegmented(List<Waypoint> waypoints) async {
       'geometry': {'type': 'LineString', 'coordinates': allCoords},
       'properties': {},
     },
-    elevationData: elevation.rangeHeight
-        .map((e) => [e[0] / 1000, e[1]])
-        .toList(),
+    elevationData: elevRangeHeight.map((e) => [e[0] / 1000, e[1]]).toList(),
     stats: RouteStats(
       distanceKm: distanceKm,
       gainM: gainLoss.gainM,

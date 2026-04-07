@@ -159,10 +159,10 @@ class _BboxSelectionScreenState
 
   void _onLayerSelected(MapLayer layer) {
     setState(() => _showLayerPopover = false);
-    ref.read(activeLayerProvider.notifier).state = layer;
+    ref.read(activeLayerProvider.notifier).set(layer);
     ref.read(settingsProvider.notifier).setDefaultLayer(layer);
     setState(() => _mapStyleLoaded = false);
-    _mapController?.setStyleString(layer.styleUrl);
+    _mapController?.setStyle(layer.styleUrl);
   }
 
   Future<void> _download() async {
@@ -191,7 +191,6 @@ class _BboxSelectionScreenState
           mapStyleUrl: _activeLayer.styleUrl,
           minZoom: 5,
           maxZoom: 14,
-          pixelDensity: 1,
         ),
         metadata: {
           'name': name,
@@ -200,14 +199,11 @@ class _BboxSelectionScreenState
         onEvent: (DownloadRegionStatus status) {
           if (!mounted) return;
           if (status is InProgress) {
-            final progress = status.count > 0 && status.maximum > 0
-                ? status.count / status.maximum
-                : 0.0;
-            setState(() => _downloadProgress = progress);
+            setState(() => _downloadProgress = status.progress);
           } else if (status is Error) {
             setState(() => _downloading = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Download error: ${status.error}')),
+              SnackBar(content: Text('Download error: ${status.cause}')),
             );
           } else if (status is Success) {
             // Navigator.pop called below after await returns.
@@ -257,7 +253,7 @@ class _BboxSelectionScreenState
     ref.listen<MapLayer?>(activeLayerProvider, (prev, next) {
       if (next != null && prev != next && _mapController != null) {
         setState(() => _mapStyleLoaded = false);
-        _mapController!.setStyleString(next.styleUrl);
+        _mapController!.setStyle(next.styleUrl);
       }
     });
 

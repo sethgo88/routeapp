@@ -51,4 +51,11 @@ final settingsProvider =
 
 /// Convenience: current active map layer for this session.
 /// Starts null → falls back to settings default → falls back to trail.
-final activeLayerProvider = StateProvider<MapLayer?>((ref) => null);
+class _ActiveLayerNotifier extends Notifier<MapLayer?> {
+  @override
+  MapLayer? build() => null;
+  void set(MapLayer? layer) => state = layer;
+}
+
+final activeLayerProvider =
+    NotifierProvider<_ActiveLayerNotifier, MapLayer?>(_ActiveLayerNotifier.new);
