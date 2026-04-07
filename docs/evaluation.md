@@ -26,7 +26,7 @@ Rate each criterion 1–5 after completing the full feature checklist:
 | Map view (MapLibre + Stadia) | ✓ | Stadia outdoors style, full screen |
 | Waypoint drop (long-press) | ✓ | Long-press on editor map |
 | Valhalla routing | ✓ | Segmented per-waypoint snap, debounced 600ms |
-| Draggable markers | ✓ | MapLibre symbol API with drag |
+| Draggable markers | ✓ | MapLibre symbol API; `onFeatureDrag` for position commit, drag preview lines, midpoint insert |
 | Snap toggle | ✓ | Per-waypoint snapAfter flag, magnet icon in editor |
 | Elevation chart + tap-to-fly | ✓ | Index-based cross-ref to route coords; tap flies camera |
 | GPX import | ✓ | File picker → editor with imported waypoints |
@@ -42,6 +42,8 @@ Rate each criterion 1–5 after completing the full feature checklist:
 | Unit-aware display | ✓ | All distance/elevation displays respect metric/imperial toggle |
 | Offline tile download | ✓ | Bbox selection screen, draggable corners, size estimate, maplibre_gl offline API |
 | Downloaded regions sheet | ✓ | List, View (zoom to bounds), Delete with confirmation |
+| Sync error handling | ✓ | `sync()` returns `bool`; red SnackBar on failure instead of silent swallow |
+| Export All routes | ✓ | Multi-track GPX 1.1 via "Export All" button in route list sheet |
 
 ### DX Notes
 - Phase 1 implemented by Claude on first pass. Home map / editor split required a full UI redesign from the initial scaffold.
@@ -52,6 +54,9 @@ Rate each criterion 1–5 after completing the full feature checklist:
 - Phase 3: `maplibre_gl` offline API (`downloadOfflineRegion`, `getListOfRegions`, `deleteOfflineRegion`) are top-level functions exported from the package. `OfflineRegionDefinition` takes `double` zoom levels. Size is estimated via tile-count formula (~15 KB/tile for vector tiles).
 - Bbox selection screen uses screen-space `Offset` coordinates for the rectangle; corners are converted to `LatLng` via `controller.toLatLng(Point<double>)` only on drag-end and on save.
 - `DraggableScrollableController` enables collapsing the regions sheet to peek when "View" is tapped.
+- Draggable waypoint markers: `onFeatureDrag` (a plain `List<OnFeatureDragCallback>` on the controller) fires for any draggable symbol, including those added via `addSymbol()`. Use `DragEventType.start/drag/end` to draw preview lines (`addLine`/`updateLine`) and commit the final position to state on `end`. The `AnnotationManager` auto-translates the symbol visually; `current: LatLng` in the callback gives the final dropped coordinates.
+- `onMapLongClick` fires at the start of the long-press gesture — before MapLibre has recognised it as a symbol drag. Fix: schedule the waypoint-add via a 100 ms `Timer`; `DragEventType.start` cancels the timer before it fires, preventing a spurious waypoint creation on drag.
+- Midpoint insert buttons: register a solid-fill route-color symbol image (`wp-midinsert`); place at geographic midpoints of each segment; distinguish from waypoint symbols in `onSymbolTapped` by tracking them in a separate `_midpointSymbols` map. Hide during drag (stale positions) and restore on `_syncAll` after drop.
 
 ### Build Notes
 _To be filled after first device test._

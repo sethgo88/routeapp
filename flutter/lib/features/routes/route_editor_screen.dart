@@ -34,8 +34,10 @@ class RouteEditorScreen extends ConsumerStatefulWidget {
 class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
   MaplibreMapController? _mapController;
   Timer? _routingDebounce;
+  Timer? _pendingAddWaypoint;
   String? _selectedWaypointId;
   bool _showLayerPopover = false;
+  bool _waypointDragActive = false;
   // Incremented on style reload to force overlay widgets to rebuild.
   int _styleVersion = 0;
 
@@ -68,6 +70,7 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
   @override
   void dispose() {
     _routingDebounce?.cancel();
+    _pendingAddWaypoint?.cancel();
     super.dispose();
   }
 
@@ -87,6 +90,16 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
     notifier.addWaypoint(coords.latitude, coords.longitude);
     _scheduleRouting();
     setState(() => _selectedWaypointId = null);
+  }
+
+  /// Called by onMapLongClick. Delays the actual add by 100 ms so a
+  /// symbol-drag start (which fires shortly after the long-press threshold)
+  /// can cancel it before any waypoint is created.
+  void _onMapLongClick(LatLng coords) {
+    _pendingAddWaypoint?.cancel();
+    _pendingAddWaypoint = Timer(const Duration(milliseconds: 100), () {
+      if (!_waypointDragActive) _addWaypoint(coords);
+    });
   }
 
   void _scheduleRouting() {
@@ -177,9 +190,9 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
 
   void _onLayerSelected(MapLayer layer) {
     setState(() => _showLayerPopover = false);
-    ref.read(activeLayerProvider.notifier).state = layer;
+    ref.read(activeLayerProvider.notifier).set(layer);
     ref.read(settingsProvider.notifier).setDefaultLayer(layer);
-    _mapController?.setStyleString(layer.styleUrl);
+    _mapController?.setStyle(layer.styleUrl);
   }
 
   @override
@@ -187,7 +200,7 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
     // Listen for layer changes triggered from outside (e.g., settings screen).
     ref.listen<MapLayer?>(activeLayerProvider, (prev, next) {
       if (next != null && prev != next && _mapController != null) {
-        _mapController!.setStyleString(next.styleUrl);
+        _mapController!.setStyle(next.styleUrl);
       }
     });
 
@@ -220,7 +233,7 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
               ),
               onMapCreated: _onMapCreated,
               onStyleLoadedCallback: _onStyleLoaded,
-              onMapLongClick: (_, coords) => _addWaypoint(coords),
+              onMapLongClick: (_, coords) => _onMapLongClick(coords),
               myLocationEnabled: true,
               myLocationTrackingMode: MyLocationTrackingMode.none,
             ),
@@ -242,7 +255,12 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
                 waypoints: state.waypoints,
                 routeColor: state.routeColor,
                 selectedWaypointId: _selectedWaypointId,
+                onDragStarted: () {
+                  _pendingAddWaypoint?.cancel();
+                  setState(() => _waypointDragActive = true);
+                },
                 onWaypointMoved: (id, lat, lon) {
+                  setState(() => _waypointDragActive = false);
                   ref
                       .read(routeProvider.notifier)
                       .moveWaypoint(id, lat, lon);
@@ -251,6 +269,12 @@ class _RouteEditorScreenState extends ConsumerState<RouteEditorScreen> {
                 onWaypointTapped: (id) =>
                     setState(() => _selectedWaypointId =
                         _selectedWaypointId == id ? null : id),
+                onMidpointInserted: (afterIndex, lat, lon) {
+                  ref
+                      .read(routeProvider.notifier)
+                      .insertWaypoint(afterIndex, lat, lon);
+                  _scheduleRouting();
+                },
               ),
 
             // Loading indicator

@@ -30,6 +30,28 @@ class RouteNotifier extends Notifier<RouteState> {
     );
   }
 
+  void insertWaypoint(int afterIndex, double lat, double lon) {
+    final newWp = Waypoint(
+      id: _makeId(),
+      latitude: lat,
+      longitude: lon,
+      label: waypointLabel(afterIndex + 1),
+      snapAfter: state.isSnapping,
+    );
+    final newList = List<Waypoint>.from(state.waypoints)
+      ..insert(afterIndex + 1, newWp);
+    final relabeled = newList
+        .asMap()
+        .entries
+        .map((e) => e.value.copyWith(label: waypointLabel(e.key)))
+        .toList();
+    state = state.copyWith(
+      history: [...state.history, state.waypoints],
+      future: [],
+      waypoints: relabeled,
+    );
+  }
+
   void moveWaypoint(String id, double lat, double lon) {
     state = state.copyWith(
       history: [...state.history, state.waypoints],
